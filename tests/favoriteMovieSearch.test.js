@@ -1,10 +1,34 @@
+/* eslint-disable class-methods-use-this */
+/* eslint-disable no-unused-vars */
 import { spyOn } from 'jest-mock';
 import FavoriteMovieSearchPresenter from '../src/scripts/views/pages/liked-movies/favorite-movie-search-presenter';
 import FavoriteMovieIdb from '../src/scripts/data/favorite-movie-idb';
 
+class FavoriteMovieSearchView {
+  getTemplate() {
+    return `
+      <div id="movie-search-container">
+        <input id="query" type="text">
+ 
+        <div class="movie-result-container">
+          <ul class="movies">
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+
+  runWhenUserIsSearching(callback) {
+    document.getElementById('query').addEventListener('change', (event) => {
+      callback(event.target.value);
+    });
+  }
+}
+
 describe('Searching movies', () => {
   let presenter;
   let favoriteMovies;
+  let view;
 
   const searchMovies = (query) => {
     const queryElement = document.getElementById('query');
@@ -14,6 +38,8 @@ describe('Searching movies', () => {
   };
 
   const setMovieSearchContainer = () => {
+    view = new FavoriteMovieSearchView();
+    document.body.innerHTML = view.getTemplate();
     document.body.innerHTML = `
       <div id="movie-search-container">
         <input id="query" type="text">
@@ -33,6 +59,7 @@ describe('Searching movies', () => {
     spyOn(FavoriteMovieIdb, 'searchMovies');
     presenter = new FavoriteMovieSearchPresenter({
       favoriteMovies,
+      view,
     });
   };
 
@@ -43,12 +70,12 @@ describe('Searching movies', () => {
 
   describe('When query is not empty', () => {
     it('should be able to capture the query typed by the user', () => {
-      FavoriteMovieIdb.searchMovies.mockImplementation(() => []);
+      favoriteMovies.searchMovies.mockImplementation(() => []);
       searchMovies('film a');
       expect(presenter.latestQuery).toEqual('film a');
     });
     it('should ask the model to search for liked movies', () => {
-      FavoriteMovieIdb.searchMovies.mockImplementation(() => []);
+      favoriteMovies.searchMovies.mockImplementation(() => []);
       searchMovies('film a');
       expect(favoriteMovies.searchMovies).toHaveBeenCalledWith('film a');
     });
@@ -146,6 +173,30 @@ describe('Searching movies', () => {
         favoriteMovies.getAllMovies.mockImplementation(() => []);
         searchMovies('    ');
         expect(favoriteMovies.getAllMovies).toHaveBeenCalled();
+      });
+    });
+
+    describe('When no favorite movies could be found', () => {
+      it('should show the empty message', (done) => {
+        document
+          .getElementById('movie-search-container')
+          .addEventListener('movies:searched:updated', () => {
+            expect(document.querySelectorAll('.movies__not__found').length).toEqual(
+              1,
+            );
+            done();
+          });
+        favoriteMovies.searchMovies.mockImplementation((query) => []);
+        searchMovies('film a');
+      });
+      it('should not show any movie', (done) => {
+        document.getElementById('movie-search-container')
+          .addEventListener('movies:searched:updated', () => {
+            expect(document.querySelectorAll('.movie').length).toEqual(0);
+            done();
+          });
+        favoriteMovies.searchMovies.mockImplementation((query) => []);
+        searchMovies('film a');
       });
     });
   });
